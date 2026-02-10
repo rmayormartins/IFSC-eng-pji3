@@ -1,0 +1,2270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estacao Meteorologica IoT — PI3 Eng. Telecom IFSC</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --bg-card: #151d2e;
+    --bg-card-hover: #1a2540;
+    --accent-cyan: #00e5ff;
+    --accent-blue: #3b82f6;
+    --accent-purple: #8b5cf6;
+    --accent-green: #10b981;
+    --accent-orange: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-pink: #ec4899;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border: #1e293b;
+    --border-accent: #2d3a52;
+    --glow-cyan: 0 0 20px rgba(0,229,255,0.15);
+    --glow-blue: 0 0 20px rgba(59,130,246,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Animated background grid ── */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  .bg-glow {
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-glow.cyan { background: var(--accent-cyan); top: -200px; left: -100px; }
+  .bg-glow.blue { background: var(--accent-blue); bottom: -200px; right: -100px; }
+  .bg-glow.purple { background: var(--accent-purple); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+  /* ── Navigation ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(10,14,23,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+  }
+  nav .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+  }
+  nav .logo {
+    font-weight: 800; font-size: 1.1rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    color: var(--accent-cyan);
+    letter-spacing: -0.02em;
+  }
+  nav .logo .dot { 
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent-cyan);
+    box-shadow: 0 0 10px var(--accent-cyan);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+  nav .nav-links {
+    display: flex; gap: 0.25rem; list-style: none;
+  }
+  nav .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  nav .nav-links a:hover {
+    color: var(--accent-cyan);
+    background: rgba(0,229,255,0.08);
+  }
+
+  /* ── Main content ── */
+  main {
+    position: relative; z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding-top: 64px;
+  }
+  .hero .badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    color: var(--accent-cyan);
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    width: fit-content;
+    margin-bottom: 1.5rem;
+    animation: fadeInUp 0.8s ease-out;
+  }
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+    animation: fadeInUp 0.8s ease-out 0.1s both;
+  }
+  .hero h1 .gradient {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero .subtitle {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    max-width: 620px;
+    margin-bottom: 2.5rem;
+    animation: fadeInUp 0.8s ease-out 0.2s both;
+  }
+  .hero .meta-row {
+    display: flex; gap: 2rem; flex-wrap: wrap;
+    animation: fadeInUp 0.8s ease-out 0.3s both;
+  }
+  .hero .meta-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.85rem; color: var(--text-muted);
+  }
+  .hero .meta-item .icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+  }
+  .hero .meta-item .icon.teal { background: rgba(0,229,255,0.1); color: var(--accent-cyan); }
+  .hero .meta-item .icon.blue { background: rgba(59,130,246,0.1); color: var(--accent-blue); }
+  .hero .meta-item .icon.purple { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+  .hero .meta-item .icon.green { background: rgba(16,185,129,0.1); color: var(--accent-green); }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Section styling ── */
+  section { padding: 5rem 0; }
+  .section-label {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+  .section-label::before {
+    content: '';
+    width: 24px; height: 2px;
+    background: var(--accent-cyan);
+    border-radius: 1px;
+  }
+  section h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+  }
+  section .section-desc {
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin-bottom: 3rem;
+  }
+
+  /* ── Architecture cards ── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.5rem;
+  }
+  .arch-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  .arch-card:hover {
+    border-color: var(--border-accent);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+  }
+  .arch-card .card-glow {
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+  .arch-card.mqtt .card-glow { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+  .arch-card.http .card-glow { background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+  .arch-card.lora .card-glow { background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink)); }
+
+  .arch-card .card-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 1.25rem;
+  }
+  .arch-card .card-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+  }
+  .arch-card.mqtt .card-icon { background: rgba(0,229,255,0.1); color: var(--accent-cyan); }
+  .arch-card.http .card-icon { background: rgba(16,185,129,0.1); color: var(--accent-green); }
+  .arch-card.lora .card-icon { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+
+  .arch-card .tag {
+    font-size: 0.7rem; font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .arch-card.mqtt .tag { background: rgba(0,229,255,0.1); color: var(--accent-cyan); }
+  .arch-card.http .tag { background: rgba(16,185,129,0.1); color: var(--accent-green); }
+  .arch-card.lora .tag { background: rgba(139,92,246,0.1); color: var(--accent-purple); }
+
+  .arch-card h3 {
+    font-size: 1.3rem; font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .arch-card .card-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .arch-card .pipeline {
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .pipeline .arrow { color: var(--text-muted); margin: 0 0.25rem; }
+  .pipeline .node {
+    display: inline;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .arch-card.mqtt .pipeline .node { background: rgba(0,229,255,0.08); color: var(--accent-cyan); }
+  .arch-card.http .pipeline .node { background: rgba(16,185,129,0.08); color: var(--accent-green); }
+  .arch-card.lora .pipeline .node { background: rgba(139,92,246,0.08); color: var(--accent-purple); }
+
+  .arch-card .specs {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+  }
+  .arch-card .spec {
+    display: flex; flex-direction: column; gap: 0.15rem;
+  }
+  .arch-card .spec-label {
+    font-size: 0.7rem; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .arch-card .spec-value {
+    font-size: 0.85rem; font-weight: 600;
+  }
+
+  /* ── Hardware Table ── */
+  .hw-table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .hw-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .hw-table thead {
+    background: rgba(0,229,255,0.05);
+  }
+  .hw-table th {
+    text-align: left;
+    padding: 1rem 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .hw-table td {
+    padding: 1rem 1.5rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .hw-table tr:last-child td { border-bottom: none; }
+  .hw-table tr:hover { background: rgba(0,229,255,0.02); }
+  .hw-table .component-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .hw-table .interface-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(59,130,246,0.1);
+    color: var(--accent-blue);
+    font-weight: 500;
+  }
+
+  /* ── Code blocks ── */
+  .code-section {
+    margin-bottom: 2rem;
+  }
+  .code-section .code-header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #0d1525;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    padding: 0.75rem 1.25rem;
+  }
+  .code-header .file-info {
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .code-header .file-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .code-header .file-dot.c { background: var(--accent-cyan); }
+  .code-header .file-dot.py { background: var(--accent-green); }
+  .code-header .file-dot.sql { background: var(--accent-orange); }
+  .code-header .file-dot.yml { background: var(--accent-purple); }
+  .code-header .file-dot.json { background: var(--accent-pink); }
+  .code-header .file-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .code-header .lang-tag {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+  }
+  .code-block {
+    background: #0d1525;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 1.25rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.75;
+    color: #c9d1d9;
+    tab-size: 2;
+  }
+  .code-block .comment { color: #6e7681; font-style: italic; }
+  .code-block .keyword { color: #ff7b72; }
+  .code-block .string { color: #a5d6ff; }
+  .code-block .type { color: #79c0ff; }
+  .code-block .function { color: #d2a8ff; }
+  .code-block .number { color: #79c0ff; }
+  .code-block .define { color: #ffa657; }
+  .code-block .include { color: #ff7b72; }
+  .code-block .macro { color: #ffa657; }
+
+  /* ── Step cards ── */
+  .steps-grid {
+    display: grid; gap: 1.5rem;
+  }
+  .step-card {
+    display: flex; gap: 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    transition: all 0.3s;
+  }
+  .step-card:hover {
+    border-color: var(--border-accent);
+    background: var(--bg-card-hover);
+  }
+  .step-number {
+    flex-shrink: 0;
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 800;
+    background: rgba(0,229,255,0.1);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(0,229,255,0.15);
+  }
+  .step-content h3 {
+    font-size: 1.1rem; font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .step-content p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  .step-content .tech-tags {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+  .tech-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(59,130,246,0.08);
+    color: var(--accent-blue);
+    border: 1px solid rgba(59,130,246,0.12);
+  }
+
+  /* ── Wiring / Pin table ── */
+  .pin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  .pin-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .pin-card-header {
+    padding: 1rem 1.25rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .pin-card-header .sensor-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .pin-row {
+    display: flex; justify-content: space-between;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .pin-row:last-child { border-bottom: none; }
+  .pin-row .pin-label { color: var(--text-secondary); }
+  .pin-row .pin-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 0.8rem;
+  }
+
+  /* ── Docker / Deploy ── */
+  .deploy-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .deploy-feature {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .deploy-feature .df-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .deploy-feature h4 {
+    font-size: 0.95rem; font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  .deploy-feature p {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Grafana section ── */
+  .grafana-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .grafana-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .grafana-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .grafana-panel.temp::before { background: var(--accent-red); }
+  .grafana-panel.hum::before { background: var(--accent-blue); }
+  .grafana-panel.press::before { background: var(--accent-green); }
+  .grafana-panel.wind::before { background: var(--accent-orange); }
+  .grafana-panel.rain::before { background: var(--accent-purple); }
+  .grafana-panel.alert::before { background: var(--accent-pink); }
+  .grafana-panel h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.35rem; }
+  .grafana-panel p { font-size: 0.8rem; color: var(--text-secondary); }
+  .grafana-panel .panel-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.5rem;
+  }
+
+  /* ── Learning Objectives ── */
+  .objectives-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.25rem;
+  }
+  .obj-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex; gap: 1rem; align-items: flex-start;
+  }
+  .obj-icon {
+    flex-shrink: 0;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+  }
+  .obj-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .obj-card p { font-size: 0.82rem; color: var(--text-secondary); }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex; gap: 0.25rem;
+    margin-bottom: 1.5rem;
+    background: rgba(0,0,0,0.2);
+    padding: 0.25rem;
+    border-radius: 10px;
+    width: fit-content;
+  }
+  .tab-btn {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: var(--bg-card);
+    color: var(--accent-cyan);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text-secondary); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: 3rem 0;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 3rem 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  footer .footer-brand {
+    font-weight: 700;
+    color: var(--accent-cyan);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 2rem; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    padding-bottom: 2rem;
+  }
+  .timeline-item:last-child { padding-bottom: 0; }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -2rem; top: 6px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    border: 3px solid var(--bg-primary);
+    box-shadow: 0 0 0 2px var(--accent-cyan);
+  }
+  .timeline-item .tl-week {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent-cyan);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  .timeline-item h4 {
+    font-size: 1rem; font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+  .timeline-item p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    nav .nav-links { display: none; }
+    .hero h1 { font-size: 2rem; }
+    .arch-grid { grid-template-columns: 1fr; }
+    .step-card { flex-direction: column; gap: 1rem; }
+    .hw-table { font-size: 0.8rem; }
+    .hw-table th, .hw-table td { padding: 0.75rem 1rem; }
+  }
+
+  /* Print styles */
+  @media print {
+    nav, .bg-grid, .bg-glow { display: none; }
+    body { background: white; color: black; }
+    .hero { min-height: auto; padding-top: 2rem; }
+    section { padding: 2rem 0; }
+    .arch-card, .step-card, .pin-card, .grafana-panel, .obj-card, .deploy-feature, .hw-table-wrap {
+      border: 1px solid #ddd;
+      background: #fafafa;
+    }
+    .code-block, .code-header { background: #f5f5f5; border-color: #ddd; }
+    .code-block { color: #333; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-glow cyan"></div>
+<div class="bg-glow blue"></div>
+<div class="bg-glow purple"></div>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo"><div class="dot"></div> WeatherStation.iot</div>
+    <ul class="nav-links">
+      <li><a href="#arquiteturas">Arquiteturas</a></li>
+      <li><a href="#hardware">Hardware</a></li>
+      <li><a href="#firmware">Firmware</a></li>
+      <li><a href="#backend">Backend</a></li>
+      <li><a href="#deploy">Deploy</a></li>
+      <li><a href="#grafana">Grafana</a></li>
+      <li><a href="#cronograma">Cronograma</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+
+<!-- ══════════════ HERO ══════════════ -->
+<section class="hero" id="home">
+  <div class="badge">::: Projeto Integrador 3 — IFSC Sao Jose</div>
+  <h1>Estacao<br><span class="gradient">Meteorologica IoT</span></h1>
+  <p class="subtitle">
+    Documentacao tecnica do sistema de monitoramento meteorologico baseado em ESP32, com tres opcoes de arquitetura de comunicacao, backend Python, TimescaleDB e dashboards Grafana.
+  </p>
+  <div class="meta-row">
+    <div class="meta-item">
+      <div class="icon teal">&gt;_</div>
+      <div><strong>3 Arquiteturas</strong><br>MQTT / HTTP / LoRaWAN</div>
+    </div>
+    <div class="meta-item">
+      <div class="icon blue">uC</div>
+      <div><strong>ESP32 DevKit</strong><br>WiFi + BLE + LoRa</div>
+    </div>
+    <div class="meta-item">
+      <div class="icon purple">|-</div>
+      <div><strong>Stack</strong><br>FastAPI + TimescaleDB + Grafana</div>
+    </div>
+    <div class="meta-item">
+      <div class="icon green">[ ]</div>
+      <div><strong>Docker Compose</strong><br>Deploy em 1 comando</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ARQUITETURAS ══════════════ -->
+<section id="arquiteturas">
+  <div class="section-label">01 — Arquiteturas de Comunicação</div>
+  <h2>Arquiteturas de comunicacao</h2>
+  <p class="section-desc">
+    Tres opcoes de protocolo para o enlace ESP32 -> Backend. Os alunos implementam pelo menos duas e comparam latencia, overhead e confiabilidade.
+  </p>
+
+  <div class="arch-grid">
+    <!-- MQTT -->
+    <div class="arch-card mqtt">
+      <div class="card-glow"></div>
+      <div class="card-header">
+        <div class="card-icon">&lt;/&gt;</div>
+        <span class="tag">Recomendada</span>
+      </div>
+      <h3>MQTT — Pub/Sub</h3>
+      <p class="card-desc">
+        Protocolo publish/subscribe padrão IoT com broker Mosquitto. Suporte a QoS 0/1/2, retained messages, wildcards e last will testament.
+      </p>
+      <div class="pipeline">
+        <span class="node">ESP32+Sensores</span>
+        <span class="arrow">→</span>
+        <span class="node">Mosquitto Broker</span>
+        <span class="arrow">→</span>
+        <span class="node">Backend Python</span>
+        <span class="arrow">→</span>
+        <span class="node">TimescaleDB</span>
+        <span class="arrow">→</span>
+        <span class="node">Grafana</span>
+      </div>
+      <div class="specs">
+        <div class="spec">
+          <span class="spec-label">Protocolo</span>
+          <span class="spec-value">MQTT v3.1.1 / v5</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Porta</span>
+          <span class="spec-value">1883 / 8883 (TLS)</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">QoS</span>
+          <span class="spec-value">0, 1, 2</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Latência</span>
+          <span class="spec-value">~50-200 ms</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HTTP -->
+    <div class="arch-card http">
+      <div class="card-glow"></div>
+      <div class="card-header">
+        <div class="card-icon">{..}</div>
+        <span class="tag">Mais Simples</span>
+      </div>
+      <h3>HTTP/REST — Request/Response</h3>
+      <p class="card-desc">
+        API RESTful com FastAPI. Endpoints claros, documentação automática Swagger, fácil debug com curl/Postman, autenticação via API key.
+      </p>
+      <div class="pipeline">
+        <span class="node">ESP32+Sensores</span>
+        <span class="arrow">→</span>
+        <span class="node">FastAPI REST</span>
+        <span class="arrow">→</span>
+        <span class="node">TimescaleDB</span>
+        <span class="arrow">→</span>
+        <span class="node">Grafana</span>
+      </div>
+      <div class="specs">
+        <div class="spec">
+          <span class="spec-label">Protocolo</span>
+          <span class="spec-value">HTTP/1.1 + JSON</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Porta</span>
+          <span class="spec-value">8000 (API)</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Método</span>
+          <span class="spec-value">POST /api/data</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Latência</span>
+          <span class="spec-value">~100-500 ms</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LoRaWAN -->
+    <div class="arch-card lora">
+      <div class="card-glow"></div>
+      <div class="card-header">
+        <div class="card-icon">~RF</div>
+        <span class="tag">Avançada</span>
+      </div>
+      <h3>LoRaWAN — Longo Alcance</h3>
+      <p class="card-desc">
+        Comunicação RF de longo alcance com modulação CSS. Integração via The Things Network (TTN), conceitos de link budget e sensibilidade.
+      </p>
+      <div class="pipeline">
+        <span class="node">ESP32+LoRa</span>
+        <span class="arrow">→</span>
+        <span class="node">Gateway LoRa</span>
+        <span class="arrow">→</span>
+        <span class="node">TTN</span>
+        <span class="arrow">→</span>
+        <span class="node">Webhook</span>
+        <span class="arrow">→</span>
+        <span class="node">Backend</span>
+        <span class="arrow">→</span>
+        <span class="node">DB</span>
+      </div>
+      <div class="specs">
+        <div class="spec">
+          <span class="spec-label">Frequência</span>
+          <span class="spec-value">915 MHz (AU915)</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Alcance</span>
+          <span class="spec-value">2-15 km</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">SF (Spread)</span>
+          <span class="spec-value">7-12</span>
+        </div>
+        <div class="spec">
+          <span class="spec-label">Payload</span>
+          <span class="spec-value">até 242 bytes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ HARDWARE ══════════════ -->
+<section id="hardware">
+  <div class="section-label">02 — Hardware e Sensores</div>
+  <h2>Bill of Materials</h2>
+  <p class="section-desc">
+    Componentes, interfaces de comunicacao e especificacoes tecnicas.
+  </p>
+
+  <div class="hw-table-wrap">
+    <table class="hw-table">
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Modelo</th>
+          <th>Interface</th>
+          <th>Especificações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="component-name">Microcontrolador</td>
+          <td>ESP32 DevKit V1</td>
+          <td><span class="interface-tag">WiFi</span> <span class="interface-tag">BLE</span> <span class="interface-tag">GPIO</span></td>
+          <td>240MHz dual-core, 520KB SRAM, 4MB Flash, 34 GPIO</td>
+        </tr>
+        <tr>
+          <td class="component-name">Sensor Temp/Umid/Press</td>
+          <td>BME280</td>
+          <td><span class="interface-tag">I2C</span> <span class="interface-tag">SPI</span></td>
+          <td>Temp: -40~85°C (±1°C), Umid: 0~100% (±3%), Press: 300~1100 hPa (±1 hPa)</td>
+        </tr>
+        <tr>
+          <td class="component-name">Sensor Temp/Umid (Alt.)</td>
+          <td>DHT22 / AM2302</td>
+          <td><span class="interface-tag">1-Wire</span></td>
+          <td>Temp: -40~80°C (±0.5°C), Umid: 0~100% (±2-5%), leitura a cada 2s</td>
+        </tr>
+        <tr>
+          <td class="component-name">Anemômetro</td>
+          <td>Pulso (reed switch)</td>
+          <td><span class="interface-tag">INT GPIO</span></td>
+          <td>Saída em pulsos, calibrar: 1 pulso/s ≈ 2.4 km/h (típico)</td>
+        </tr>
+        <tr>
+          <td class="component-name">Pluviômetro</td>
+          <td>Tipping bucket</td>
+          <td><span class="interface-tag">INT GPIO</span></td>
+          <td>Cada tip ≈ 0.2794 mm de chuva, contagem por interrupção</td>
+        </tr>
+        <tr>
+          <td class="component-name">Módulo LoRa (Opc. 3)</td>
+          <td>SX1276 / RFM95W</td>
+          <td><span class="interface-tag">SPI</span></td>
+          <td>915 MHz, +20 dBm TX, -148 dBm sensibilidade, SF7-SF12</td>
+        </tr>
+        <tr>
+          <td class="component-name">Display (Opcional)</td>
+          <td>OLED SSD1306 0.96"</td>
+          <td><span class="interface-tag">I2C</span></td>
+          <td>128×64 pixels, endereço 0x3C, exibe status e leituras locais</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pinagem -->
+  <h3 style="margin-top: 2.5rem; margin-bottom: 1.25rem; font-size: 1.2rem;">Mapa de Pinagem — ESP32</h3>
+  <div class="pin-grid">
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <div class="sensor-dot" style="background: var(--accent-blue);"></div>
+        BME280 (I2C)
+      </div>
+      <div class="pin-row"><span class="pin-label">VCC</span><span class="pin-value" style="color: var(--accent-red);">3.3V</span></div>
+      <div class="pin-row"><span class="pin-label">GND</span><span class="pin-value">GND</span></div>
+      <div class="pin-row"><span class="pin-label">SDA</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 21</span></div>
+      <div class="pin-row"><span class="pin-label">SCL</span><span class="pin-value" style="color: var(--accent-green);">GPIO 22</span></div>
+    </div>
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <div class="sensor-dot" style="background: var(--accent-green);"></div>
+        DHT22 (1-Wire)
+      </div>
+      <div class="pin-row"><span class="pin-label">VCC</span><span class="pin-value" style="color: var(--accent-red);">3.3V</span></div>
+      <div class="pin-row"><span class="pin-label">GND</span><span class="pin-value">GND</span></div>
+      <div class="pin-row"><span class="pin-label">DATA</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 4</span></div>
+      <div class="pin-row"><span class="pin-label">Nota</span><span class="pin-value" style="color: var(--text-muted); font-size:0.7rem;">Pull-up 10kΩ</span></div>
+    </div>
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <div class="sensor-dot" style="background: var(--accent-orange);"></div>
+        Anemômetro (INT)
+      </div>
+      <div class="pin-row"><span class="pin-label">Sinal</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 34</span></div>
+      <div class="pin-row"><span class="pin-label">GND</span><span class="pin-value">GND</span></div>
+      <div class="pin-row"><span class="pin-label">Nota</span><span class="pin-value" style="color: var(--text-muted); font-size:0.7rem;">INPUT_ONLY, pull-up ext.</span></div>
+    </div>
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <div class="sensor-dot" style="background: var(--accent-purple);"></div>
+        Pluviômetro (INT)
+      </div>
+      <div class="pin-row"><span class="pin-label">Sinal</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 35</span></div>
+      <div class="pin-row"><span class="pin-label">GND</span><span class="pin-value">GND</span></div>
+      <div class="pin-row"><span class="pin-label">Nota</span><span class="pin-value" style="color: var(--text-muted); font-size:0.7rem;">INPUT_ONLY, debounce SW</span></div>
+    </div>
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <div class="sensor-dot" style="background: var(--accent-pink);"></div>
+        LoRa SX1276 (SPI)
+      </div>
+      <div class="pin-row"><span class="pin-label">SCK</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 5</span></div>
+      <div class="pin-row"><span class="pin-label">MISO</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 19</span></div>
+      <div class="pin-row"><span class="pin-label">MOSI</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 27</span></div>
+      <div class="pin-row"><span class="pin-label">NSS</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 18</span></div>
+      <div class="pin-row"><span class="pin-label">RST</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 14</span></div>
+      <div class="pin-row"><span class="pin-label">DIO0</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 26</span></div>
+    </div>
+    <div class="pin-card">
+      <div class="pin-card-header">
+        <div class="sensor-dot" style="background: var(--accent-cyan);"></div>
+        OLED SSD1306 (I2C)
+      </div>
+      <div class="pin-row"><span class="pin-label">VCC</span><span class="pin-value" style="color: var(--accent-red);">3.3V</span></div>
+      <div class="pin-row"><span class="pin-label">GND</span><span class="pin-value">GND</span></div>
+      <div class="pin-row"><span class="pin-label">SDA</span><span class="pin-value" style="color: var(--accent-cyan);">GPIO 21</span></div>
+      <div class="pin-row"><span class="pin-label">SCL</span><span class="pin-value" style="color: var(--accent-green);">GPIO 22</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FIRMWARE ══════════════ -->
+<section id="firmware">
+  <div class="section-label">03 — Firmware ESP32</div>
+  <h2>Firmware ESP32</h2>
+  <p class="section-desc">
+    C++ (Arduino Framework / PlatformIO). Leitura de BME280 via I2C, anemometro e pluviometro por interrupcao de hardware.
+  </p>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('mqtt-fw')">MQTT</button>
+    <button class="tab-btn" onclick="switchTab('http-fw')">HTTP/REST</button>
+    <button class="tab-btn" onclick="switchTab('lora-fw')">LoRaWAN</button>
+  </div>
+
+  <!-- MQTT Firmware -->
+  <div class="tab-panel active" id="mqtt-fw">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot c"></div><span class="file-name">src/main_mqtt.cpp</span></div>
+        <span class="lang-tag">C++ / Arduino</span>
+      </div>
+      <pre class="code-block"><span class="comment">// ═══════════════════════════════════════════════════════════</span>
+<span class="comment">//  Estação Meteorológica IoT — Firmware MQTT</span>
+<span class="comment">//  PI3 — Eng. Telecomunicações — IFSC São José</span>
+<span class="comment">// ═══════════════════════════════════════════════════════════</span>
+
+<span class="include">#include</span> &lt;WiFi.h&gt;
+<span class="include">#include</span> &lt;PubSubClient.h&gt;
+<span class="include">#include</span> &lt;Wire.h&gt;
+<span class="include">#include</span> &lt;Adafruit_BME280.h&gt;
+<span class="include">#include</span> &lt;ArduinoJson.h&gt;
+
+<span class="comment">// ── Configuração WiFi ──</span>
+<span class="keyword">const char</span>* WIFI_SSID     = <span class="string">"SUA_REDE_WIFI"</span>;
+<span class="keyword">const char</span>* WIFI_PASSWORD = <span class="string">"SUA_SENHA_WIFI"</span>;
+
+<span class="comment">// ── Configuração MQTT ──</span>
+<span class="keyword">const char</span>* MQTT_BROKER   = <span class="string">"192.168.1.100"</span>;  <span class="comment">// IP do servidor</span>
+<span class="keyword">const int</span>   MQTT_PORT     = <span class="number">1883</span>;
+<span class="keyword">const char</span>* MQTT_TOPIC    = <span class="string">"estacao/sensores"</span>;
+<span class="keyword">const char</span>* MQTT_CLIENT   = <span class="string">"ESP32_Estacao_01"</span>;
+<span class="keyword">const char</span>* MQTT_USER     = <span class="string">"estacao"</span>;
+<span class="keyword">const char</span>* MQTT_PASS     = <span class="string">"senha_mqtt"</span>;
+
+<span class="comment">// ── Pinos ──</span>
+<span class="define">#define</span> <span class="macro">PIN_ANEMOMETRO</span>  <span class="number">34</span>
+<span class="define">#define</span> <span class="macro">PIN_PLUVIOMETRO</span> <span class="number">35</span>
+<span class="define">#define</span> <span class="macro">INTERVALO_LEITURA</span> <span class="number">30000</span>  <span class="comment">// 30 segundos</span>
+
+<span class="comment">// ── Objetos ──</span>
+WiFiClient espClient;
+PubSubClient mqtt(espClient);
+Adafruit_BME280 bme;
+
+<span class="comment">// ── Variáveis voláteis (interrupções) ──</span>
+<span class="keyword">volatile</span> <span class="type">unsigned long</span> pulsos_vento = <span class="number">0</span>;
+<span class="keyword">volatile</span> <span class="type">unsigned long</span> pulsos_chuva = <span class="number">0</span>;
+<span class="type">unsigned long</span> ultimo_envio = <span class="number">0</span>;
+<span class="type">unsigned long</span> ultimo_debounce_chuva = <span class="number">0</span>;
+
+<span class="comment">// ── ISRs (Interrupt Service Routines) ──</span>
+<span class="keyword">void</span> IRAM_ATTR <span class="function">isr_anemometro</span>() {
+  pulsos_vento++;
+}
+
+<span class="keyword">void</span> IRAM_ATTR <span class="function">isr_pluviometro</span>() {
+  <span class="type">unsigned long</span> agora = <span class="function">millis</span>();
+  <span class="keyword">if</span> (agora - ultimo_debounce_chuva > <span class="number">300</span>) { <span class="comment">// debounce 300ms</span>
+    pulsos_chuva++;
+    ultimo_debounce_chuva = agora;
+  }
+}
+
+<span class="comment">// ── Conexão WiFi ──</span>
+<span class="keyword">void</span> <span class="function">conectar_wifi</span>() {
+  Serial.<span class="function">printf</span>(<span class="string">"Conectando WiFi: %s"</span>, WIFI_SSID);
+  WiFi.<span class="function">begin</span>(WIFI_SSID, WIFI_PASSWORD);
+  <span class="keyword">while</span> (WiFi.<span class="function">status</span>() != WL_CONNECTED) {
+    <span class="function">delay</span>(<span class="number">500</span>);
+    Serial.<span class="function">print</span>(<span class="string">"."</span>);
+  }
+  Serial.<span class="function">printf</span>(<span class="string">"\nWiFi OK! IP: %s\n"</span>, WiFi.<span class="function">localIP</span>().<span class="function">toString</span>().<span class="function">c_str</span>());
+}
+
+<span class="comment">// ── Conexão MQTT ──</span>
+<span class="keyword">void</span> <span class="function">conectar_mqtt</span>() {
+  <span class="keyword">while</span> (!mqtt.<span class="function">connected</span>()) {
+    Serial.<span class="function">print</span>(<span class="string">"Conectando MQTT..."</span>);
+    <span class="keyword">if</span> (mqtt.<span class="function">connect</span>(MQTT_CLIENT, MQTT_USER, MQTT_PASS)) {
+      Serial.<span class="function">println</span>(<span class="string">"OK!"</span>);
+      <span class="comment">// Publica status online (retained)</span>
+      mqtt.<span class="function">publish</span>(<span class="string">"estacao/status"</span>, <span class="string">"online"</span>, <span class="keyword">true</span>);
+    } <span class="keyword">else</span> {
+      Serial.<span class="function">printf</span>(<span class="string">"Falha rc=%d. Retry em 5s...\n"</span>, mqtt.<span class="function">state</span>());
+      <span class="function">delay</span>(<span class="number">5000</span>);
+    }
+  }
+}
+
+<span class="comment">// ── Calcula velocidade do vento ──</span>
+<span class="type">float</span> <span class="function">calcular_vento_kmh</span>(<span class="type">unsigned long</span> pulsos, <span class="type">unsigned long</span> dt_ms) {
+  <span class="keyword">if</span> (dt_ms == <span class="number">0</span>) <span class="keyword">return</span> <span class="number">0.0</span>;
+  <span class="type">float</span> freq = (<span class="type">float</span>)pulsos / ((<span class="type">float</span>)dt_ms / <span class="number">1000.0</span>);
+  <span class="keyword">return</span> freq * <span class="number">2.4</span>;  <span class="comment">// Fator de calibração típico</span>
+}
+
+<span class="comment">// ── Calcula precipitação ──</span>
+<span class="type">float</span> <span class="function">calcular_chuva_mm</span>(<span class="type">unsigned long</span> pulsos) {
+  <span class="keyword">return</span> pulsos * <span class="number">0.2794</span>;  <span class="comment">// mm por tip</span>
+}
+
+<span class="keyword">void</span> <span class="function">setup</span>() {
+  Serial.<span class="function">begin</span>(<span class="number">115200</span>);
+  Serial.<span class="function">println</span>(<span class="string">"\n═══ Estação Meteorológica IoT ═══"</span>);
+
+  <span class="comment">// Inicializa BME280</span>
+  Wire.<span class="function">begin</span>(<span class="number">21</span>, <span class="number">22</span>);
+  <span class="keyword">if</span> (!bme.<span class="function">begin</span>(<span class="number">0x76</span>)) {
+    Serial.<span class="function">println</span>(<span class="string">"[ERRO] BME280 não encontrado!"</span>);
+    <span class="keyword">while</span>(<span class="number">1</span>) <span class="function">delay</span>(<span class="number">1000</span>);
+  }
+  Serial.<span class="function">println</span>(<span class="string">"[OK] BME280 inicializado"</span>);
+
+  <span class="comment">// Configura interrupções</span>
+  <span class="function">pinMode</span>(PIN_ANEMOMETRO, INPUT);
+  <span class="function">pinMode</span>(PIN_PLUVIOMETRO, INPUT);
+  <span class="function">attachInterrupt</span>(<span class="function">digitalPinToInterrupt</span>(PIN_ANEMOMETRO), isr_anemometro, FALLING);
+  <span class="function">attachInterrupt</span>(<span class="function">digitalPinToInterrupt</span>(PIN_PLUVIOMETRO), isr_pluviometro, FALLING);
+
+  <span class="comment">// Conecta WiFi e MQTT</span>
+  <span class="function">conectar_wifi</span>();
+  mqtt.<span class="function">setServer</span>(MQTT_BROKER, MQTT_PORT);
+  <span class="function">conectar_mqtt</span>();
+}
+
+<span class="keyword">void</span> <span class="function">loop</span>() {
+  <span class="keyword">if</span> (!mqtt.<span class="function">connected</span>()) <span class="function">conectar_mqtt</span>();
+  mqtt.<span class="function">loop</span>();
+
+  <span class="type">unsigned long</span> agora = <span class="function">millis</span>();
+  <span class="keyword">if</span> (agora - ultimo_envio >= INTERVALO_LEITURA) {
+    <span class="type">unsigned long</span> dt = agora - ultimo_envio;
+
+    <span class="comment">// Lê sensores</span>
+    <span class="type">float</span> temperatura = bme.<span class="function">readTemperature</span>();
+    <span class="type">float</span> umidade     = bme.<span class="function">readHumidity</span>();
+    <span class="type">float</span> pressao     = bme.<span class="function">readPressure</span>() / <span class="number">100.0</span>;
+
+    <span class="comment">// Calcula vento e chuva</span>
+    <span class="keyword">noInterrupts</span>();
+    <span class="type">unsigned long</span> p_vento = pulsos_vento;
+    <span class="type">unsigned long</span> p_chuva = pulsos_chuva;
+    pulsos_vento = <span class="number">0</span>;
+    <span class="keyword">interrupts</span>();
+
+    <span class="type">float</span> vento_kmh = <span class="function">calcular_vento_kmh</span>(p_vento, dt);
+    <span class="type">float</span> chuva_mm  = <span class="function">calcular_chuva_mm</span>(p_chuva);
+
+    <span class="comment">// Monta JSON</span>
+    JsonDocument doc;
+    doc[<span class="string">"station_id"</span>]   = MQTT_CLIENT;
+    doc[<span class="string">"temperatura"</span>]  = <span class="function">round</span>(temperatura * <span class="number">100</span>) / <span class="number">100.0</span>;
+    doc[<span class="string">"umidade"</span>]      = <span class="function">round</span>(umidade * <span class="number">100</span>) / <span class="number">100.0</span>;
+    doc[<span class="string">"pressao"</span>]      = <span class="function">round</span>(pressao * <span class="number">100</span>) / <span class="number">100.0</span>;
+    doc[<span class="string">"vento_kmh"</span>]    = <span class="function">round</span>(vento_kmh * <span class="number">100</span>) / <span class="number">100.0</span>;
+    doc[<span class="string">"chuva_mm"</span>]     = chuva_mm;
+
+    <span class="type">char</span> payload[<span class="number">256</span>];
+    <span class="function">serializeJson</span>(doc, payload);
+
+    <span class="comment">// Publica com QoS 1 (at least once)</span>
+    <span class="keyword">if</span> (mqtt.<span class="function">publish</span>(MQTT_TOPIC, payload)) {
+      Serial.<span class="function">printf</span>(<span class="string">"[MQTT] Publicado: %s\n"</span>, payload);
+    }
+
+    ultimo_envio = agora;
+  }
+}</pre>
+    </div>
+  </div>
+
+  <!-- HTTP Firmware -->
+  <div class="tab-panel" id="http-fw">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot c"></div><span class="file-name">src/main_http.cpp</span></div>
+        <span class="lang-tag">C++ / Arduino</span>
+      </div>
+      <pre class="code-block"><span class="comment">// ═══════════════════════════════════════════════════════════</span>
+<span class="comment">//  Estação Meteorológica IoT — Firmware HTTP/REST</span>
+<span class="comment">//  PI3 — Eng. Telecomunicações — IFSC São José</span>
+<span class="comment">// ═══════════════════════════════════════════════════════════</span>
+
+<span class="include">#include</span> &lt;WiFi.h&gt;
+<span class="include">#include</span> &lt;HTTPClient.h&gt;
+<span class="include">#include</span> &lt;Wire.h&gt;
+<span class="include">#include</span> &lt;Adafruit_BME280.h&gt;
+<span class="include">#include</span> &lt;ArduinoJson.h&gt;
+
+<span class="comment">// ── Configuração ──</span>
+<span class="keyword">const char</span>* WIFI_SSID     = <span class="string">"SUA_REDE_WIFI"</span>;
+<span class="keyword">const char</span>* WIFI_PASSWORD = <span class="string">"SUA_SENHA_WIFI"</span>;
+<span class="keyword">const char</span>* API_URL       = <span class="string">"http://192.168.1.100:8000/api/v1/weather"</span>;
+<span class="keyword">const char</span>* API_KEY       = <span class="string">"chave-secreta-estacao-01"</span>;
+<span class="keyword">const char</span>* STATION_ID    = <span class="string">"ESP32_Estacao_01"</span>;
+
+<span class="define">#define</span> <span class="macro">PIN_ANEMOMETRO</span>  <span class="number">34</span>
+<span class="define">#define</span> <span class="macro">PIN_PLUVIOMETRO</span> <span class="number">35</span>
+<span class="define">#define</span> <span class="macro">INTERVALO_LEITURA</span> <span class="number">30000</span>
+
+Adafruit_BME280 bme;
+<span class="keyword">volatile</span> <span class="type">unsigned long</span> pulsos_vento = <span class="number">0</span>;
+<span class="keyword">volatile</span> <span class="type">unsigned long</span> pulsos_chuva = <span class="number">0</span>;
+<span class="type">unsigned long</span> ultimo_envio = <span class="number">0</span>;
+<span class="type">unsigned long</span> ultimo_debounce_chuva = <span class="number">0</span>;
+
+<span class="keyword">void</span> IRAM_ATTR <span class="function">isr_anemometro</span>()  { pulsos_vento++; }
+<span class="keyword">void</span> IRAM_ATTR <span class="function">isr_pluviometro</span>() {
+  <span class="type">unsigned long</span> agora = <span class="function">millis</span>();
+  <span class="keyword">if</span> (agora - ultimo_debounce_chuva > <span class="number">300</span>) {
+    pulsos_chuva++;
+    ultimo_debounce_chuva = agora;
+  }
+}
+
+<span class="keyword">void</span> <span class="function">conectar_wifi</span>() {
+  WiFi.<span class="function">begin</span>(WIFI_SSID, WIFI_PASSWORD);
+  <span class="keyword">while</span> (WiFi.<span class="function">status</span>() != WL_CONNECTED) <span class="function">delay</span>(<span class="number">500</span>);
+  Serial.<span class="function">printf</span>(<span class="string">"WiFi OK! IP: %s\n"</span>, WiFi.<span class="function">localIP</span>().<span class="function">toString</span>().<span class="function">c_str</span>());
+}
+
+<span class="comment">// ── Envia dados via HTTP POST ──</span>
+<span class="keyword">void</span> <span class="function">enviar_http</span>(<span class="type">float</span> temp, <span class="type">float</span> umid, <span class="type">float</span> press, <span class="type">float</span> vento, <span class="type">float</span> chuva) {
+  HTTPClient http;
+  http.<span class="function">begin</span>(API_URL);
+  http.<span class="function">addHeader</span>(<span class="string">"Content-Type"</span>, <span class="string">"application/json"</span>);
+  http.<span class="function">addHeader</span>(<span class="string">"X-API-Key"</span>, API_KEY);
+
+  JsonDocument doc;
+  doc[<span class="string">"station_id"</span>]  = STATION_ID;
+  doc[<span class="string">"temperatura"</span>] = temp;
+  doc[<span class="string">"umidade"</span>]     = umid;
+  doc[<span class="string">"pressao"</span>]     = press;
+  doc[<span class="string">"vento_kmh"</span>]   = vento;
+  doc[<span class="string">"chuva_mm"</span>]    = chuva;
+
+  <span class="type">char</span> payload[<span class="number">256</span>];
+  <span class="function">serializeJson</span>(doc, payload);
+
+  <span class="type">int</span> httpCode = http.<span class="function">POST</span>(payload);
+  <span class="keyword">if</span> (httpCode == <span class="number">201</span>) {
+    Serial.<span class="function">printf</span>(<span class="string">"[HTTP] POST OK (201): %s\n"</span>, payload);
+  } <span class="keyword">else</span> {
+    Serial.<span class="function">printf</span>(<span class="string">"[HTTP] Erro: %d — %s\n"</span>, httpCode, http.<span class="function">errorToString</span>(httpCode).<span class="function">c_str</span>());
+  }
+  http.<span class="function">end</span>();
+}
+
+<span class="keyword">void</span> <span class="function">setup</span>() {
+  Serial.<span class="function">begin</span>(<span class="number">115200</span>);
+  Wire.<span class="function">begin</span>(<span class="number">21</span>, <span class="number">22</span>);
+  bme.<span class="function">begin</span>(<span class="number">0x76</span>);
+  <span class="function">pinMode</span>(PIN_ANEMOMETRO, INPUT);
+  <span class="function">pinMode</span>(PIN_PLUVIOMETRO, INPUT);
+  <span class="function">attachInterrupt</span>(<span class="function">digitalPinToInterrupt</span>(PIN_ANEMOMETRO), isr_anemometro, FALLING);
+  <span class="function">attachInterrupt</span>(<span class="function">digitalPinToInterrupt</span>(PIN_PLUVIOMETRO), isr_pluviometro, FALLING);
+  <span class="function">conectar_wifi</span>();
+}
+
+<span class="keyword">void</span> <span class="function">loop</span>() {
+  <span class="keyword">if</span> (WiFi.<span class="function">status</span>() != WL_CONNECTED) <span class="function">conectar_wifi</span>();
+
+  <span class="type">unsigned long</span> agora = <span class="function">millis</span>();
+  <span class="keyword">if</span> (agora - ultimo_envio >= INTERVALO_LEITURA) {
+    <span class="type">unsigned long</span> dt = agora - ultimo_envio;
+
+    <span class="keyword">noInterrupts</span>();
+    <span class="type">unsigned long</span> pv = pulsos_vento; pulsos_vento = <span class="number">0</span>;
+    <span class="type">unsigned long</span> pc = pulsos_chuva;
+    <span class="keyword">interrupts</span>();
+
+    <span class="function">enviar_http</span>(
+      bme.<span class="function">readTemperature</span>(),
+      bme.<span class="function">readHumidity</span>(),
+      bme.<span class="function">readPressure</span>() / <span class="number">100.0</span>,
+      (dt > <span class="number">0</span>) ? (<span class="type">float</span>)pv / ((<span class="type">float</span>)dt/<span class="number">1000.0</span>) * <span class="number">2.4</span> : <span class="number">0</span>,
+      pc * <span class="number">0.2794</span>
+    );
+    ultimo_envio = agora;
+  }
+}</pre>
+    </div>
+  </div>
+
+  <!-- LoRaWAN Firmware -->
+  <div class="tab-panel" id="lora-fw">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot c"></div><span class="file-name">src/main_lorawan.cpp</span></div>
+        <span class="lang-tag">C++ / Arduino + LMIC</span>
+      </div>
+      <pre class="code-block"><span class="comment">// ═══════════════════════════════════════════════════════════</span>
+<span class="comment">//  Estação Meteorológica IoT — Firmware LoRaWAN (TTN)</span>
+<span class="comment">//  PI3 — Eng. Telecomunicações — IFSC São José</span>
+<span class="comment">//  Usa biblioteca LMIC (MCCI LoRaWAN LMIC Library)</span>
+<span class="comment">// ═══════════════════════════════════════════════════════════</span>
+
+<span class="include">#include</span> &lt;lmic.h&gt;
+<span class="include">#include</span> &lt;hal/hal.h&gt;
+<span class="include">#include</span> &lt;SPI.h&gt;
+<span class="include">#include</span> &lt;Wire.h&gt;
+<span class="include">#include</span> &lt;Adafruit_BME280.h&gt;
+
+<span class="comment">// ── TTN OTAA Keys (substitua pelas suas!) ──</span>
+<span class="keyword">static const</span> u1_t PROGMEM APPEUI[<span class="number">8</span>]  = { <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span> };
+<span class="keyword">static const</span> u1_t PROGMEM DEVEUI[<span class="number">8</span>]  = { <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span> };
+<span class="keyword">static const</span> u1_t PROGMEM APPKEY[<span class="number">16</span>] = { <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>,
+                                          <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span> };
+
+<span class="keyword">void</span> <span class="function">os_getArtEui</span>(u1_t* buf) { <span class="function">memcpy_P</span>(buf, APPEUI, <span class="number">8</span>); }
+<span class="keyword">void</span> <span class="function">os_getDevEui</span>(u1_t* buf) { <span class="function">memcpy_P</span>(buf, DEVEUI, <span class="number">8</span>); }
+<span class="keyword">void</span> <span class="function">os_getDevKey</span>(u1_t* buf) { <span class="function">memcpy_P</span>(buf, APPKEY, <span class="number">16</span>); }
+
+<span class="comment">// ── Pin mapping LoRa SX1276 ──</span>
+<span class="keyword">const</span> lmic_pinmap lmic_pins = {
+  .nss  = <span class="number">18</span>,
+  .rxtx = LMIC_UNUSED_PIN,
+  .rst  = <span class="number">14</span>,
+  .dio  = {<span class="number">26</span>, <span class="number">33</span>, <span class="number">32</span>},
+};
+
+Adafruit_BME280 bme;
+<span class="keyword">static</span> osjob_t sendjob;
+<span class="keyword">const</span> <span class="type">unsigned</span> TX_INTERVAL = <span class="number">300</span>; <span class="comment">// 5 minutos (LoRa = baixa frequência)</span>
+
+<span class="comment">// ── Empacota payload (binário, eficiente) ──</span>
+<span class="keyword">void</span> <span class="function">empacotar_payload</span>(uint8_t* buf) {
+  <span class="type">int16_t</span> temp  = (<span class="type">int16_t</span>)(bme.<span class="function">readTemperature</span>() * <span class="number">100</span>);
+  <span class="type">uint16_t</span> umid = (<span class="type">uint16_t</span>)(bme.<span class="function">readHumidity</span>() * <span class="number">100</span>);
+  <span class="type">uint16_t</span> pres = (<span class="type">uint16_t</span>)(bme.<span class="function">readPressure</span>() / <span class="number">10</span>); <span class="comment">// em 0.1 hPa</span>
+
+  buf[<span class="number">0</span>] = temp >> <span class="number">8</span>;    buf[<span class="number">1</span>] = temp & <span class="number">0xFF</span>;
+  buf[<span class="number">2</span>] = umid >> <span class="number">8</span>;    buf[<span class="number">3</span>] = umid & <span class="number">0xFF</span>;
+  buf[<span class="number">4</span>] = pres >> <span class="number">8</span>;    buf[<span class="number">5</span>] = pres & <span class="number">0xFF</span>;
+  <span class="comment">// Bytes 6-9: vento e chuva (implementar similar)</span>
+}
+
+<span class="comment">// ── Envia payload LoRaWAN ──</span>
+<span class="keyword">void</span> <span class="function">do_send</span>(osjob_t* j) {
+  <span class="keyword">if</span> (LMIC.opmode & OP_TXRXPEND) {
+    Serial.<span class="function">println</span>(<span class="string">"[LoRa] TX pendente, ignorando"</span>);
+  } <span class="keyword">else</span> {
+    uint8_t payload[<span class="number">10</span>];
+    <span class="function">empacotar_payload</span>(payload);
+    LMIC_setTxData2(<span class="number">1</span>, payload, <span class="keyword">sizeof</span>(payload), <span class="number">0</span>);
+    Serial.<span class="function">println</span>(<span class="string">"[LoRa] Pacote enfileirado"</span>);
+  }
+}
+
+<span class="comment">// ── Callback de eventos LMIC ──</span>
+<span class="keyword">void</span> <span class="function">onEvent</span>(ev_t ev) {
+  <span class="keyword">switch</span>(ev) {
+    <span class="keyword">case</span> EV_JOINED:
+      Serial.<span class="function">println</span>(<span class="string">"[LoRa] Join aceito!"</span>);
+      LMIC_setLinkCheckMode(<span class="number">0</span>);
+      <span class="keyword">break</span>;
+    <span class="keyword">case</span> EV_TXCOMPLETE:
+      Serial.<span class="function">println</span>(<span class="string">"[LoRa] TX completo"</span>);
+      <span class="comment">// Agenda próximo envio</span>
+      os_setTimedCallback(&sendjob,
+        os_getTime() + sec2osticks(TX_INTERVAL), do_send);
+      <span class="keyword">break</span>;
+    <span class="keyword">case</span> EV_JOIN_FAILED:
+      Serial.<span class="function">println</span>(<span class="string">"[LoRa] Join falhou!"</span>);
+      <span class="keyword">break</span>;
+    <span class="keyword">default</span>:
+      <span class="keyword">break</span>;
+  }
+}
+
+<span class="keyword">void</span> <span class="function">setup</span>() {
+  Serial.<span class="function">begin</span>(<span class="number">115200</span>);
+  Wire.<span class="function">begin</span>(<span class="number">21</span>, <span class="number">22</span>);
+  bme.<span class="function">begin</span>(<span class="number">0x76</span>);
+
+  <span class="comment">// Inicializa LMIC</span>
+  os_init();
+  LMIC_reset();
+  <span class="comment">// Configura para AU915 (Brasil)</span>
+  LMIC_selectSubBand(<span class="number">1</span>); <span class="comment">// Sub-band 2 (canais 8-15 + 65)</span>
+
+  <span class="comment">// Inicia join OTAA + primeiro envio</span>
+  <span class="function">do_send</span>(&sendjob);
+}
+
+<span class="keyword">void</span> <span class="function">loop</span>() {
+  os_runloop_once();
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ BACKEND ══════════════ -->
+<section id="backend">
+  <div class="section-label">04 — Backend Python</div>
+  <h2>Backend Python</h2>
+  <p class="section-desc">
+    FastAPI para rota HTTP, subscriber Paho-MQTT para rota pub/sub. Persistencia em TimescaleDB, validacao com Pydantic.
+  </p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('backend-api')">FastAPI (HTTP)</button>
+    <button class="tab-btn" onclick="switchTab('backend-mqtt')">MQTT Subscriber</button>
+    <button class="tab-btn" onclick="switchTab('backend-db')">TimescaleDB</button>
+    <button class="tab-btn" onclick="switchTab('backend-models')">Models</button>
+  </div>
+
+  <!-- FastAPI -->
+  <div class="tab-panel active" id="backend-api">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot py"></div><span class="file-name">app/main.py</span></div>
+        <span class="lang-tag">Python / FastAPI</span>
+      </div>
+      <pre class="code-block"><span class="comment"># ═══════════════════════════════════════════════════════════</span>
+<span class="comment">#  Backend FastAPI — Estação Meteorológica IoT</span>
+<span class="comment">#  PI3 — Eng. Telecomunicações — IFSC São José</span>
+<span class="comment"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI, HTTPException, Depends, Header
+<span class="keyword">from</span> fastapi.middleware.cors <span class="keyword">import</span> CORSMiddleware
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime, timedelta
+<span class="keyword">from</span> typing <span class="keyword">import</span> Optional
+<span class="keyword">import</span> asyncpg
+<span class="keyword">import</span> os
+
+<span class="keyword">from</span> app.models <span class="keyword">import</span> WeatherData, WeatherResponse
+
+app = FastAPI(
+    title=<span class="string">"Estacao Meteorologica IoT API"</span>,
+    version=<span class="string">"1.0.0"</span>,
+    description=<span class="string">"API REST para receber e consultar dados meteorológicos"</span>
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[<span class="string">"*"</span>],
+    allow_methods=[<span class="string">"*"</span>],
+    allow_headers=[<span class="string">"*"</span>],
+)
+
+<span class="comment"># ── Database pool ──</span>
+DATABASE_URL = os.getenv(<span class="string">"DATABASE_URL"</span>,
+    <span class="string">"postgresql://postgres:postgres@timescaledb:5432/weather"</span>)
+API_KEY = os.getenv(<span class="string">"API_KEY"</span>, <span class="string">"chave-secreta-estacao-01"</span>)
+
+pool: asyncpg.Pool = <span class="keyword">None</span>
+
+<span class="keyword">@app.on_event</span>(<span class="string">"startup"</span>)
+<span class="keyword">async def</span> <span class="function">startup</span>():
+    <span class="keyword">global</span> pool
+    pool = <span class="keyword">await</span> asyncpg.create_pool(DATABASE_URL, min_size=<span class="number">2</span>, max_size=<span class="number">10</span>)
+
+<span class="keyword">@app.on_event</span>(<span class="string">"shutdown"</span>)
+<span class="keyword">async def</span> <span class="function">shutdown</span>():
+    <span class="keyword">await</span> pool.close()
+
+<span class="comment"># ── Autenticação simples ──</span>
+<span class="keyword">async def</span> <span class="function">verify_api_key</span>(x_api_key: str = Header(...)):
+    <span class="keyword">if</span> x_api_key != API_KEY:
+        <span class="keyword">raise</span> HTTPException(status_code=<span class="number">401</span>, detail=<span class="string">"API Key inválida"</span>)
+
+<span class="comment"># ── POST: Recebe dados do ESP32 ──</span>
+<span class="keyword">@app.post</span>(<span class="string">"/api/v1/weather"</span>, status_code=<span class="number">201</span>)
+<span class="keyword">async def</span> <span class="function">create_weather_data</span>(
+    data: WeatherData,
+    _: <span class="keyword">None</span> = Depends(verify_api_key)
+):
+    query = <span class="string">"""
+        INSERT INTO weather_data
+            (time, station_id, temperatura, umidade, pressao, vento_kmh, chuva_mm)
+        VALUES (NOW(), $1, $2, $3, $4, $5, $6)
+        RETURNING time
+    """</span>
+    <span class="keyword">async with</span> pool.acquire() <span class="keyword">as</span> conn:
+        row = <span class="keyword">await</span> conn.fetchrow(
+            query, data.station_id,
+            data.temperatura, data.umidade, data.pressao,
+            data.vento_kmh, data.chuva_mm
+        )
+    <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"ok"</span>, <span class="string">"timestamp"</span>: row[<span class="string">"time"</span>].isoformat()}
+
+<span class="comment"># ── GET: Consulta últimas leituras ──</span>
+<span class="keyword">@app.get</span>(<span class="string">"/api/v1/weather/latest"</span>)
+<span class="keyword">async def</span> <span class="function">get_latest</span>(station_id: Optional[str] = <span class="keyword">None</span>, limit: int = <span class="number">100</span>):
+    query = <span class="string">"""
+        SELECT * FROM weather_data
+        WHERE ($1::text IS NULL OR station_id = $1)
+        ORDER BY time DESC
+        LIMIT $2
+    """</span>
+    <span class="keyword">async with</span> pool.acquire() <span class="keyword">as</span> conn:
+        rows = <span class="keyword">await</span> conn.fetch(query, station_id, limit)
+    <span class="keyword">return</span> [dict(r) <span class="keyword">for</span> r <span class="keyword">in</span> rows]
+
+<span class="comment"># ── GET: Agregações temporais ──</span>
+<span class="keyword">@app.get</span>(<span class="string">"/api/v1/weather/aggregate"</span>)
+<span class="keyword">async def</span> <span class="function">get_aggregate</span>(
+    interval: str = <span class="string">"1 hour"</span>,
+    hours_back: int = <span class="number">24</span>
+):
+    query = <span class="string">"""
+        SELECT
+            time_bucket($1::interval, time) AS bucket,
+            AVG(temperatura) AS avg_temp,
+            AVG(umidade) AS avg_umid,
+            AVG(pressao) AS avg_press,
+            MAX(vento_kmh) AS max_vento,
+            SUM(chuva_mm) AS total_chuva,
+            COUNT(*) AS amostras
+        FROM weather_data
+        WHERE time > NOW() - ($2 || ' hours')::interval
+        GROUP BY bucket
+        ORDER BY bucket DESC
+    """</span>
+    <span class="keyword">async with</span> pool.acquire() <span class="keyword">as</span> conn:
+        rows = <span class="keyword">await</span> conn.fetch(query, interval, str(hours_back))
+    <span class="keyword">return</span> [dict(r) <span class="keyword">for</span> r <span class="keyword">in</span> rows]
+
+<span class="comment"># ── Health check ──</span>
+<span class="keyword">@app.get</span>(<span class="string">"/health"</span>)
+<span class="keyword">async def</span> <span class="function">health</span>():
+    <span class="keyword">return</span> {<span class="string">"status"</span>: <span class="string">"healthy"</span>, <span class="string">"timestamp"</span>: datetime.utcnow().isoformat()}</pre>
+    </div>
+  </div>
+
+  <!-- MQTT Subscriber -->
+  <div class="tab-panel" id="backend-mqtt">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot py"></div><span class="file-name">app/mqtt_subscriber.py</span></div>
+        <span class="lang-tag">Python / Paho-MQTT</span>
+      </div>
+      <pre class="code-block"><span class="comment"># ═══════════════════════════════════════════════════════════</span>
+<span class="comment">#  MQTT Subscriber — Recebe dados do broker e grava no DB</span>
+<span class="comment"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="keyword">import</span> json
+<span class="keyword">import</span> os
+<span class="keyword">import</span> psycopg2
+<span class="keyword">from</span> psycopg2.extras <span class="keyword">import</span> RealDictCursor
+<span class="keyword">import</span> paho.mqtt.client <span class="keyword">as</span> mqtt
+
+<span class="comment"># ── Configuração ──</span>
+MQTT_BROKER = os.getenv(<span class="string">"MQTT_BROKER"</span>, <span class="string">"mosquitto"</span>)
+MQTT_PORT   = int(os.getenv(<span class="string">"MQTT_PORT"</span>, <span class="string">"1883"</span>))
+MQTT_TOPIC  = os.getenv(<span class="string">"MQTT_TOPIC"</span>, <span class="string">"estacao/#"</span>)
+DB_URL      = os.getenv(<span class="string">"DATABASE_URL"</span>,
+    <span class="string">"postgresql://postgres:postgres@timescaledb:5432/weather"</span>)
+
+<span class="comment"># ── Conexão DB ──</span>
+<span class="keyword">def</span> <span class="function">get_db_conn</span>():
+    <span class="keyword">return</span> psycopg2.connect(DB_URL)
+
+<span class="comment"># ── Callbacks MQTT ──</span>
+<span class="keyword">def</span> <span class="function">on_connect</span>(client, userdata, flags, rc):
+    <span class="keyword">if</span> rc == <span class="number">0</span>:
+        print(f<span class="string">"[MQTT] Conectado ao broker {MQTT_BROKER}:{MQTT_PORT}"</span>)
+        client.subscribe(MQTT_TOPIC, qos=<span class="number">1</span>)
+        print(f<span class="string">"[MQTT] Inscrito em: {MQTT_TOPIC}"</span>)
+    <span class="keyword">else</span>:
+        print(f<span class="string">"[MQTT] Falha na conexão, rc={rc}"</span>)
+
+<span class="keyword">def</span> <span class="function">on_message</span>(client, userdata, msg):
+    <span class="keyword">try</span>:
+        payload = json.loads(msg.payload.decode())
+        print(f<span class="string">"[MQTT] {msg.topic}: {payload}"</span>)
+
+        <span class="comment"># Filtra só mensagens de sensores</span>
+        <span class="keyword">if</span> <span class="string">"sensores"</span> <span class="keyword">not in</span> msg.topic:
+            <span class="keyword">return</span>
+
+        conn = get_db_conn()
+        <span class="keyword">with</span> conn.cursor() <span class="keyword">as</span> cur:
+            cur.execute(<span class="string">"""
+                INSERT INTO weather_data
+                    (time, station_id, temperatura, umidade,
+                     pressao, vento_kmh, chuva_mm)
+                VALUES (NOW(), %s, %s, %s, %s, %s, %s)
+            """</span>, (
+                payload.get(<span class="string">"station_id"</span>, <span class="string">"unknown"</span>),
+                payload.get(<span class="string">"temperatura"</span>),
+                payload.get(<span class="string">"umidade"</span>),
+                payload.get(<span class="string">"pressao"</span>),
+                payload.get(<span class="string">"vento_kmh"</span>, <span class="number">0</span>),
+                payload.get(<span class="string">"chuva_mm"</span>, <span class="number">0</span>),
+            ))
+            conn.commit()
+        conn.close()
+        print(<span class="string">"[DB] Dados inseridos com sucesso"</span>)
+
+    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:
+        print(f<span class="string">"[ERRO] {e}"</span>)
+
+<span class="comment"># ── Main ──</span>
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    client = mqtt.Client(client_id=<span class="string">"weather-subscriber"</span>)
+    client.username_pw_set(<span class="string">"estacao"</span>, <span class="string">"senha_mqtt"</span>)
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    print(<span class="string">"[MQTT] Iniciando subscriber..."</span>)
+    client.connect(MQTT_BROKER, MQTT_PORT, keepalive=<span class="number">60</span>)
+    client.loop_forever()</pre>
+    </div>
+  </div>
+
+  <!-- TimescaleDB -->
+  <div class="tab-panel" id="backend-db">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot sql"></div><span class="file-name">db/init.sql</span></div>
+        <span class="lang-tag">SQL / TimescaleDB</span>
+      </div>
+      <pre class="code-block"><span class="comment">-- ═══════════════════════════════════════════════════════════</span>
+<span class="comment">--  Inicialização TimescaleDB — Estação Meteorológica IoT</span>
+<span class="comment">-- ═══════════════════════════════════════════════════════════</span>
+
+<span class="comment">-- Habilita extensão TimescaleDB</span>
+<span class="keyword">CREATE EXTENSION IF NOT EXISTS</span> timescaledb;
+
+<span class="comment">-- Tabela principal de dados meteorológicos</span>
+<span class="keyword">CREATE TABLE IF NOT EXISTS</span> weather_data (
+    time          <span class="type">TIMESTAMPTZ</span>    <span class="keyword">NOT NULL</span>,
+    station_id    <span class="type">TEXT</span>           <span class="keyword">NOT NULL</span>,
+    temperatura   <span class="type">DOUBLE PRECISION</span>,
+    umidade       <span class="type">DOUBLE PRECISION</span>,
+    pressao       <span class="type">DOUBLE PRECISION</span>,
+    vento_kmh     <span class="type">DOUBLE PRECISION</span> <span class="keyword">DEFAULT</span> <span class="number">0</span>,
+    chuva_mm      <span class="type">DOUBLE PRECISION</span> <span class="keyword">DEFAULT</span> <span class="number">0</span>
+);
+
+<span class="comment">-- Converte para hypertable (particionamento temporal automático)</span>
+<span class="keyword">SELECT</span> create_hypertable(
+    <span class="string">'weather_data'</span>,
+    <span class="string">'time'</span>,
+    if_not_exists => <span class="keyword">TRUE</span>
+);
+
+<span class="comment">-- Índice para consultas por estação</span>
+<span class="keyword">CREATE INDEX IF NOT EXISTS</span> idx_station_time
+    <span class="keyword">ON</span> weather_data (station_id, time <span class="keyword">DESC</span>);
+
+<span class="comment">-- ── Continuous Aggregate: média horária ──</span>
+<span class="keyword">CREATE MATERIALIZED VIEW IF NOT EXISTS</span> weather_hourly
+<span class="keyword">WITH</span> (timescaledb.continuous) <span class="keyword">AS</span>
+<span class="keyword">SELECT</span>
+    time_bucket(<span class="string">'1 hour'</span>, time) <span class="keyword">AS</span> bucket,
+    station_id,
+    <span class="function">AVG</span>(temperatura)  <span class="keyword">AS</span> avg_temp,
+    <span class="function">MIN</span>(temperatura)  <span class="keyword">AS</span> min_temp,
+    <span class="function">MAX</span>(temperatura)  <span class="keyword">AS</span> max_temp,
+    <span class="function">AVG</span>(umidade)      <span class="keyword">AS</span> avg_umid,
+    <span class="function">AVG</span>(pressao)      <span class="keyword">AS</span> avg_press,
+    <span class="function">MAX</span>(vento_kmh)    <span class="keyword">AS</span> max_vento,
+    <span class="function">SUM</span>(chuva_mm)     <span class="keyword">AS</span> total_chuva,
+    <span class="function">COUNT</span>(*)          <span class="keyword">AS</span> amostras
+<span class="keyword">FROM</span> weather_data
+<span class="keyword">GROUP BY</span> bucket, station_id
+<span class="keyword">WITH NO DATA</span>;
+
+<span class="comment">-- Política de refresh automático</span>
+<span class="keyword">SELECT</span> add_continuous_aggregate_policy(<span class="string">'weather_hourly'</span>,
+    start_offset  => <span class="keyword">INTERVAL</span> <span class="string">'3 hours'</span>,
+    end_offset    => <span class="keyword">INTERVAL</span> <span class="string">'1 hour'</span>,
+    schedule_interval => <span class="keyword">INTERVAL</span> <span class="string">'1 hour'</span>,
+    if_not_exists => <span class="keyword">TRUE</span>
+);
+
+<span class="comment">-- Política de retenção: remove dados brutos após 90 dias</span>
+<span class="keyword">SELECT</span> add_retention_policy(<span class="string">'weather_data'</span>,
+    <span class="keyword">INTERVAL</span> <span class="string">'90 days'</span>,
+    if_not_exists => <span class="keyword">TRUE</span>
+);
+
+<span class="comment">-- Insere dados de exemplo para teste</span>
+<span class="keyword">INSERT INTO</span> weather_data (time, station_id, temperatura, umidade, pressao, vento_kmh, chuva_mm)
+<span class="keyword">VALUES</span>
+    (<span class="function">NOW</span>() - <span class="keyword">INTERVAL</span> <span class="string">'2 hours'</span>, <span class="string">'ESP32_Estacao_01'</span>, <span class="number">24.5</span>, <span class="number">68.2</span>, <span class="number">1013.25</span>, <span class="number">12.3</span>, <span class="number">0.0</span>),
+    (<span class="function">NOW</span>() - <span class="keyword">INTERVAL</span> <span class="string">'1 hour'</span>,  <span class="string">'ESP32_Estacao_01'</span>, <span class="number">23.8</span>, <span class="number">71.5</span>, <span class="number">1012.80</span>, <span class="number">15.7</span>, <span class="number">0.28</span>),
+    (<span class="function">NOW</span>(),                       <span class="string">'ESP32_Estacao_01'</span>, <span class="number">22.1</span>, <span class="number">78.3</span>, <span class="number">1011.50</span>, <span class="number">8.9</span>,  <span class="number">1.12</span>);</pre>
+    </div>
+  </div>
+
+  <!-- Models -->
+  <div class="tab-panel" id="backend-models">
+    <div class="code-section">
+      <div class="code-header">
+        <div class="file-info"><div class="file-dot py"></div><span class="file-name">app/models.py</span></div>
+        <span class="lang-tag">Python / Pydantic</span>
+      </div>
+      <pre class="code-block"><span class="comment"># ═══════════════════════════════════════════════════════════</span>
+<span class="comment">#  Modelos Pydantic — Validação de dados</span>
+<span class="comment"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel, Field
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+<span class="keyword">from</span> typing <span class="keyword">import</span> Optional
+
+<span class="keyword">class</span> <span class="type">WeatherData</span>(BaseModel):
+    <span class="string">"""Payload recebido do ESP32"""</span>
+    station_id:  str   = Field(..., example=<span class="string">"ESP32_Estacao_01"</span>)
+    temperatura: float = Field(..., ge=<span class="number">-50</span>, le=<span class="number">60</span>,  description=<span class="string">"°C"</span>)
+    umidade:     float = Field(..., ge=<span class="number">0</span>,   le=<span class="number">100</span>, description=<span class="string">"%RH"</span>)
+    pressao:     float = Field(..., ge=<span class="number">300</span>, le=<span class="number">1100</span>, description=<span class="string">"hPa"</span>)
+    vento_kmh:   float = Field(<span class="number">0</span>,   ge=<span class="number">0</span>,   le=<span class="number">300</span>, description=<span class="string">"km/h"</span>)
+    chuva_mm:    float = Field(<span class="number">0</span>,   ge=<span class="number">0</span>,              description=<span class="string">"mm"</span>)
+
+<span class="keyword">class</span> <span class="type">WeatherResponse</span>(BaseModel):
+    <span class="string">"""Resposta da API"""</span>
+    time:        datetime
+    station_id:  str
+    temperatura: float
+    umidade:     float
+    pressao:     float
+    vento_kmh:   float
+    chuva_mm:    float</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ DEPLOY ══════════════ -->
+<section id="deploy">
+  <div class="section-label">05 — Deploy com Docker</div>
+  <h2>Docker Compose</h2>
+  <p class="section-desc">
+    Cinco servicos: TimescaleDB, Mosquitto, FastAPI, MQTT Subscriber e Grafana. Rede interna isolada, volumes persistentes.
+  </p>
+
+  <div class="deploy-features">
+    <div class="deploy-feature">
+      <div class="df-icon">[#]</div>
+      <h4>Docker Compose</h4>
+      <p><code>docker compose up -d</code></p>
+    </div>
+    <div class="deploy-feature">
+      <div class="df-icon">x5</div>
+      <h4>5 Servicos</h4>
+      <p>DB, Broker, API, Subscriber, Grafana</p>
+    </div>
+    <div class="deploy-feature">
+      <div class="df-icon">IO</div>
+      <h4>Volumes Persistentes</h4>
+      <p>Dados sobrevivem a restart</p>
+    </div>
+    <div class="deploy-feature">
+      <div class="df-icon">--</div>
+      <h4>Rede Isolada</h4>
+      <p>Bridge network entre containers</p>
+    </div>
+  </div>
+
+  <div class="code-section">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot yml"></div><span class="file-name">docker-compose.yml</span></div>
+      <span class="lang-tag">YAML</span>
+    </div>
+    <pre class="code-block"><span class="comment"># ═══════════════════════════════════════════════════════════</span>
+<span class="comment">#  Docker Compose — Estação Meteorológica IoT</span>
+<span class="comment">#  PI3 — Eng. Telecomunicações — IFSC São José</span>
+<span class="comment">#</span>
+<span class="comment">#  Uso: docker compose up -d</span>
+<span class="comment"># ═══════════════════════════════════════════════════════════</span>
+
+<span class="keyword">version</span>: <span class="string">"3.8"</span>
+
+<span class="keyword">services</span>:
+  <span class="comment"># ── TimescaleDB (PostgreSQL otimizado para time-series) ──</span>
+  <span class="type">timescaledb</span>:
+    image: timescale/timescaledb:latest-pg16
+    container_name: weather-db
+    environment:
+      POSTGRES_DB: weather
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - <span class="string">"5432:5432"</span>
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [<span class="string">"CMD-SHELL"</span>, <span class="string">"pg_isready -U postgres"</span>]
+      interval: 5s
+      retries: 5
+
+  <span class="comment"># ── Mosquitto MQTT Broker ──</span>
+  <span class="type">mosquitto</span>:
+    image: eclipse-mosquitto:2
+    container_name: weather-mqtt
+    ports:
+      - <span class="string">"1883:1883"</span>
+      - <span class="string">"9001:9001"</span>   <span class="comment"># WebSocket</span>
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/password.txt:/mosquitto/config/password.txt
+      - mqttdata:/mosquitto/data
+
+  <span class="comment"># ── Backend FastAPI ──</span>
+  <span class="type">api</span>:
+    build: .
+    container_name: weather-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@timescaledb:5432/weather
+      API_KEY: chave-secreta-estacao-01
+    ports:
+      - <span class="string">"8000:8000"</span>
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+
+  <span class="comment"># ── MQTT Subscriber (persiste dados MQTT no DB) ──</span>
+  <span class="type">mqtt-subscriber</span>:
+    build: .
+    container_name: weather-mqtt-sub
+    command: python -m app.mqtt_subscriber
+    environment:
+      MQTT_BROKER: mosquitto
+      MQTT_PORT: <span class="string">"1883"</span>
+      DATABASE_URL: postgresql://postgres:postgres@timescaledb:5432/weather
+    depends_on:
+      - mosquitto
+      - timescaledb
+
+  <span class="comment"># ── Grafana (Dashboards) ──</span>
+  <span class="type">grafana</span>:
+    image: grafana/grafana:latest
+    container_name: weather-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    ports:
+      - <span class="string">"3000:3000"</span>
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - timescaledb
+
+<span class="keyword">volumes</span>:
+  pgdata:
+  mqttdata:
+  grafanadata:
+
+<span class="keyword">networks</span>:
+  <span class="keyword">default</span>:
+    name: weather-network</pre>
+  </div>
+
+  <!-- Mosquitto config -->
+  <div class="code-section" style="margin-top: 1.5rem;">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot json"></div><span class="file-name">mosquitto/mosquitto.conf</span></div>
+      <span class="lang-tag">Config</span>
+    </div>
+    <pre class="code-block"><span class="comment"># Configuração Mosquitto MQTT Broker</span>
+listener 1883
+protocol mqtt
+
+listener 9001
+protocol websockets
+
+<span class="comment"># Autenticação</span>
+allow_anonymous false
+password_file /mosquitto/config/password.txt
+
+<span class="comment"># Persistência</span>
+persistence true
+persistence_location /mosquitto/data/
+
+<span class="comment"># Logging</span>
+log_type all
+log_dest stdout</pre>
+  </div>
+
+  <!-- Dockerfile -->
+  <div class="code-section" style="margin-top: 1.5rem;">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot yml"></div><span class="file-name">Dockerfile</span></div>
+      <span class="lang-tag">Docker</span>
+    </div>
+    <pre class="code-block"><span class="keyword">FROM</span> python:3.12-slim
+
+<span class="keyword">WORKDIR</span> /app
+
+<span class="keyword">COPY</span> requirements.txt .
+<span class="keyword">RUN</span> pip install --no-cache-dir -r requirements.txt
+
+<span class="keyword">COPY</span> . .
+
+<span class="keyword">EXPOSE</span> 8000
+
+<span class="keyword">CMD</span> ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]</pre>
+  </div>
+
+  <div class="code-section" style="margin-top: 1.5rem;">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot py"></div><span class="file-name">requirements.txt</span></div>
+      <span class="lang-tag">PIP</span>
+    </div>
+    <pre class="code-block">fastapi==0.115.*
+uvicorn[standard]==0.34.*
+asyncpg==0.30.*
+psycopg2-binary==2.9.*
+paho-mqtt==2.1.*
+pydantic==2.10.*</pre>
+  </div>
+</section>
+
+<!-- ══════════════ GRAFANA ══════════════ -->
+<section id="grafana">
+  <div class="section-label">06 — Visualização de Dados</div>
+  <h2>Dashboards Grafana</h2>
+  <p class="section-desc">
+    Datasource PostgreSQL/TimescaleDB. Auto-refresh 10s. Provisioning automatico via YAML.
+  </p>
+
+  <div class="grafana-panels">
+    <div class="grafana-panel temp">
+      <h4>[T] Temperatura</h4>
+      <p>Série temporal com min/avg/max, gradiente vermelho-azul, threshold de alerta acima de 35°C</p>
+      <div class="panel-type">Time Series + Stat Panel</div>
+    </div>
+    <div class="grafana-panel hum">
+      <h4>[H] Umidade Relativa</h4>
+      <p>Gauge circular 0-100%, cores adaptativas. Tabela com histórico e sparkline</p>
+      <div class="panel-type">Gauge + Table</div>
+    </div>
+    <div class="grafana-panel press">
+      <h4>[P] Pressao Atmosferica</h4>
+      <p>Gráfico com eixo Y ajustado (990-1040 hPa), tendência para previsão de tempo</p>
+      <div class="panel-type">Time Series + Trend</div>
+    </div>
+    <div class="grafana-panel wind">
+      <h4>[W] Velocidade do Vento</h4>
+      <p>Bar gauge horizontal com escala Beaufort, rajada máxima em stat panel</p>
+      <div class="panel-type">Bar Gauge + Stat</div>
+    </div>
+    <div class="grafana-panel rain">
+      <h4>[R] Precipitacao</h4>
+      <p>Gráfico de barras (mm/hora), acumulado diário em stat panel, cores de intensidade</p>
+      <div class="panel-type">Bar Chart + Stat</div>
+    </div>
+    <div class="grafana-panel alert">
+      <h4>[!] Alertas e Status</h4>
+      <p>Regras de alerta: temp > 35°C, vento > 60 km/h, sem dados > 5 min. Status da estação</p>
+      <div class="panel-type">Alert List + State Timeline</div>
+    </div>
+  </div>
+
+  <!-- Grafana provisioning -->
+  <div class="code-section" style="margin-top: 2rem;">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot yml"></div><span class="file-name">grafana/provisioning/datasources/timescaledb.yml</span></div>
+      <span class="lang-tag">YAML</span>
+    </div>
+    <pre class="code-block"><span class="keyword">apiVersion</span>: 1
+
+<span class="keyword">datasources</span>:
+  - name: TimescaleDB
+    type: postgres
+    access: proxy
+    url: timescaledb:5432
+    database: weather
+    user: postgres
+    secureJsonData:
+      password: postgres
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 10
+      postgresVersion: 1600
+      timescaledb: true
+    isDefault: true
+    editable: true</pre>
+  </div>
+
+  <div class="code-section" style="margin-top: 1.5rem;">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot sql"></div><span class="file-name">Queries Grafana — Exemplos</span></div>
+      <span class="lang-tag">SQL</span>
+    </div>
+    <pre class="code-block"><span class="comment">-- ═══ Painel: Temperatura em tempo real ═══</span>
+<span class="keyword">SELECT</span>
+  time <span class="keyword">AS</span> <span class="string">"time"</span>,
+  temperatura <span class="keyword">AS</span> <span class="string">"Temperatura (°C)"</span>
+<span class="keyword">FROM</span> weather_data
+<span class="keyword">WHERE</span>
+  $__timeFilter(time)
+  <span class="keyword">AND</span> station_id = <span class="string">'ESP32_Estacao_01'</span>
+<span class="keyword">ORDER BY</span> time;
+
+<span class="comment">-- ═══ Painel: Média horária (usa Continuous Aggregate) ═══</span>
+<span class="keyword">SELECT</span>
+  bucket <span class="keyword">AS</span> <span class="string">"time"</span>,
+  avg_temp  <span class="keyword">AS</span> <span class="string">"Média"</span>,
+  min_temp  <span class="keyword">AS</span> <span class="string">"Mínima"</span>,
+  max_temp  <span class="keyword">AS</span> <span class="string">"Máxima"</span>
+<span class="keyword">FROM</span> weather_hourly
+<span class="keyword">WHERE</span>
+  $__timeFilter(bucket)
+  <span class="keyword">AND</span> station_id = <span class="string">'ESP32_Estacao_01'</span>
+<span class="keyword">ORDER BY</span> bucket;
+
+<span class="comment">-- ═══ Painel: Precipitação acumulada por hora ═══</span>
+<span class="keyword">SELECT</span>
+  time_bucket(<span class="string">'1 hour'</span>, time) <span class="keyword">AS</span> <span class="string">"time"</span>,
+  <span class="function">SUM</span>(chuva_mm) <span class="keyword">AS</span> <span class="string">"Chuva (mm)"</span>
+<span class="keyword">FROM</span> weather_data
+<span class="keyword">WHERE</span> $__timeFilter(time)
+<span class="keyword">GROUP BY</span> <span class="number">1</span>
+<span class="keyword">ORDER BY</span> <span class="number">1</span>;
+
+<span class="comment">-- ═══ Painel: Stat — Último valor de cada grandeza ═══</span>
+<span class="keyword">SELECT</span>
+  temperatura <span class="keyword">AS</span> <span class="string">"Temp (°C)"</span>,
+  umidade     <span class="keyword">AS</span> <span class="string">"Umid (%)"</span>,
+  pressao     <span class="keyword">AS</span> <span class="string">"Press (hPa)"</span>,
+  vento_kmh   <span class="keyword">AS</span> <span class="string">"Vento (km/h)"</span>
+<span class="keyword">FROM</span> weather_data
+<span class="keyword">ORDER BY</span> time <span class="keyword">DESC</span>
+<span class="keyword">LIMIT</span> <span class="number">1</span>;</pre>
+  </div>
+</section>
+
+<!-- ══════════════ CRONOGRAMA ══════════════ -->
+<section id="cronograma">
+  <div class="section-label">07 — Cronograma Sugerido</div>
+  <h2>Cronograma — 14 semanas</h2>
+  <p class="section-desc">
+    Distribuicao sugerida para um semestre letivo.
+  </p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 1-2</div>
+      <h4>Planejamento e Setup</h4>
+      <p>Definição de escopo, compra de componentes, instalação do Docker e PlatformIO, configuração do ambiente de desenvolvimento.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 3-4</div>
+      <h4>Hardware e Sensores</h4>
+      <p>Montagem do circuito na protoboard, testes individuais de cada sensor (BME280, anemômetro, pluviômetro), calibração.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 5-6</div>
+      <h4>Arquitetura HTTP/REST</h4>
+      <p>Implementação do firmware HTTP no ESP32, backend FastAPI, banco TimescaleDB. Validação ponta a ponta.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 7-8</div>
+      <h4>Arquitetura MQTT</h4>
+      <p>Configuração do Mosquitto, implementação do firmware MQTT, subscriber Python. Testes de QoS e retained messages.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 9-10</div>
+      <h4>Dashboards Grafana</h4>
+      <p>Paineis, queries otimizadas, continuous aggregates, regras de alerta. Dashboard funcional.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 11-12</div>
+      <h4>LoRaWAN (Opcional) + Testes</h4>
+      <p>Implementação LoRa com TTN (se disponível), testes de campo, comparação de performance entre arquiteturas.</p>
+    </div>
+    <div class="timeline-item">
+      <div class="tl-week">Semanas 13-14</div>
+      <h4>Documentação e Apresentação</h4>
+      <p>Relatório técnico final, análise comparativa dos protocolos, vídeo demonstrativo, preparação da apresentação.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ OBJETIVOS ══════════════ -->
+<section id="objetivos">
+  <div class="section-label">08 — Objetivos de Aprendizagem</div>
+  <h2>Competencias tecnicas</h2>
+
+  <div class="objectives-grid">
+    <div class="obj-card">
+      <div class="obj-icon" style="background: rgba(0,229,255,0.1); color: var(--accent-cyan);">&gt;_</div>
+      <div>
+        <h4>Protocolos de Comunicação</h4>
+        <p>MQTT (pub/sub, QoS, topics), HTTP/REST (verbos, status codes, JSON), LoRaWAN (modulação CSS, SF, link budget)</p>
+      </div>
+    </div>
+    <div class="obj-card">
+      <div class="obj-icon" style="background: rgba(59,130,246,0.1); color: var(--accent-blue);">uC</div>
+      <div>
+        <h4>IoT e Sistemas Embarcados</h4>
+        <p>ESP32 (GPIO, I2C, SPI, interrupções), sensores analógicos e digitais, gerenciamento de energia, OTA updates</p>
+      </div>
+    </div>
+    <div class="obj-card">
+      <div class="obj-icon" style="background: rgba(16,185,129,0.1); color: var(--accent-green);">/.</div>
+      <div>
+        <h4>Backend e APIs RESTful</h4>
+        <p>FastAPI (async, Pydantic, OpenAPI), autenticação (API keys), pool de conexões, middleware CORS</p>
+      </div>
+    </div>
+    <div class="obj-card">
+      <div class="obj-icon" style="background: rgba(245,158,11,0.1); color: var(--accent-orange);">DB</div>
+      <div>
+        <h4>Bancos de Dados Time-Series</h4>
+        <p>TimescaleDB (hypertables, continuous aggregates, retention policies), SQL avançado, otimização de queries</p>
+      </div>
+    </div>
+    <div class="obj-card">
+      <div class="obj-icon" style="background: rgba(139,92,246,0.1); color: var(--accent-purple);">|-</div>
+      <div>
+        <h4>Visualização de Dados</h4>
+        <p>Grafana (datasources, panels, alertas, provisioning), design de dashboards, métricas e KPIs</p>
+      </div>
+    </div>
+    <div class="obj-card">
+      <div class="obj-icon" style="background: rgba(236,72,153,0.1); color: var(--accent-pink);">[#]</div>
+      <div>
+        <h4>DevOps e Containerização</h4>
+        <p>Docker (Dockerfile, compose), redes entre containers, volumes persistentes, health checks, deploy automatizado</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ESTRUTURA DO PROJETO ══════════════ -->
+<section id="estrutura">
+  <div class="section-label">09 — Estrutura do Projeto</div>
+  <h2>Arvore de diretorios</h2>
+
+  <div class="code-section">
+    <div class="code-header">
+      <div class="file-info"><div class="file-dot yml"></div><span class="file-name">Árvore de diretórios</span></div>
+      <span class="lang-tag">Tree</span>
+    </div>
+    <pre class="code-block">estacao-meteorologica-iot/
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+├── README.md
+│
+├── app/                        <span class="comment"># Backend Python</span>
+│   ├── __init__.py
+│   ├── main.py                 <span class="comment"># FastAPI (rota HTTP)</span>
+│   ├── models.py               <span class="comment"># Pydantic schemas</span>
+│   └── mqtt_subscriber.py      <span class="comment"># Subscriber MQTT → DB</span>
+│
+├── db/                         <span class="comment"># Database</span>
+│   └── init.sql                <span class="comment"># Schema + hypertable + seeds</span>
+│
+├── firmware/                   <span class="comment"># Código ESP32 (PlatformIO)</span>
+│   ├── platformio.ini
+│   └── src/
+│       ├── main_mqtt.cpp       <span class="comment"># Firmware opção 1: MQTT</span>
+│       ├── main_http.cpp       <span class="comment"># Firmware opção 2: HTTP</span>
+│       └── main_lorawan.cpp    <span class="comment"># Firmware opção 3: LoRaWAN</span>
+│
+├── mosquitto/                  <span class="comment"># Config do broker MQTT</span>
+│   ├── mosquitto.conf
+│   └── password.txt
+│
+├── grafana/                    <span class="comment"># Dashboards e provisioning</span>
+│   └── provisioning/
+│       ├── datasources/
+│       │   └── timescaledb.yml
+│       └── dashboards/
+│           └── weather.json
+│
+└── docs/                       <span class="comment"># Documentação</span>
+    ├── arquitetura.md
+    ├── guia-montagem.md
+    └── analise-protocolos.md</pre>
+  </div>
+</section>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  <div style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+    <div class="footer-brand">:: Estacao Meteorologica IoT</div>
+    <p>Projeto Integrador 3 — Engenharia de Telecomunicacoes — IFSC Campus Sao Jose</p>
+    <p style="margin-top: 0.5rem; font-size: 0.75rem;">Documentacao tecnica de referencia — 2026</p>
+  </div>
+</footer>
+
+<!-- Tab switching script -->
+<script>
+  function switchTab(tabId) {
+    // Find the parent section
+    const targetPanel = document.getElementById(tabId);
+    const section = targetPanel.closest('section');
+
+    // Deactivate all tabs and panels in that section
+    section.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    section.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+
+    // Activate target
+    targetPanel.classList.add('active');
+
+    // Find and activate the corresponding button
+    section.querySelectorAll('.tab-btn').forEach(btn => {
+      if (btn.getAttribute('onclick').includes(tabId)) {
+        btn.classList.add('active');
+      }
+    });
+  }
+
+  // Smooth scroll for nav links
+  document.querySelectorAll('nav a').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>
